@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实验室研究成果可视化</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: #f0f2f5; /* Light gray background for the page */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Ensure it takes at least full viewport height */
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .node:hover {
+            transform: scale(1.05);
+            filter: brightness(1.1);
+        }
+        .node-label {
+            pointer-events: none; /* Allow clicks to pass through to the circle */
+            user-select: none; /* Prevent text selection */
+            font-weight: 500;
+        }
+        .connection {
+            stroke-dasharray: 5;
+            animation: dash 60s linear infinite; /* Slower animation */
+        }
+        @keyframes dash {
+            to {
+                stroke-dashoffset: 1000;
+            }
+        }
+        .paper-card {
+            position: absolute;
+            background: white;
+            border-radius: 8px;
+            padding: 15px; /* Increased padding */
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15); /* Softer shadow */
+            width: 280px; /* Wider card */
+            font-size: 13px; /* Slightly larger font */
+            opacity: 0;
+            transform: translateY(10px) scale(0.95);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+            z-index: 100;
+            border: 1px solid #e0e0e0;
+        }
+        .paper-title {
+            font-weight: 600; /* Bolder title */
+            color: #333;
+            margin-bottom: 6px; /* Increased margin */
+            font-size: 14px;
+        }
+        .paper-venue {
+            color: #555; /* Darker gray */
+            font-style: italic;
+            margin-bottom: 4px;
+        }
+        .paper-authors {
+            color: #777;
+            font-size: 12px;
+        }
+        .legend {
+            position: absolute;
+            right: 20px;
+            top: 70px; /* Adjusted to not overlap header */
+            background: rgba(255,255,255,0.9);
+            padding: 12px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            font-size: 13px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .legend-color {
+            width: 14px; /* Larger color swatch */
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding: 10px 0 18px 0; /* Adjusted padding */
+            font-size: 22px; /* Slightly smaller */
+            font-weight: 600;
+            color: #2c3e50; /* Darker blue-gray */
+            width: 100%;
+            position: absolute; /* Position it absolutely within the container */
+            top: 10px;
+            left: 0;
+        }
+        #research-visualization {
+            width: 100%;
+            max-width: 900px; /* Max width for larger screens */
+            height: 600px;
+            background-color:#ffffff; /* White background for the chart area */
+            border-radius: 12px; /* More rounded corners */
+            font-family: 'Inter', sans-serif;
+            position:relative; /* Changed from absolute to relative for better flow */
+            overflow:hidden;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1); /* More prominent shadow */
+            border: 1px solid #d1d5db;
+        }
+        /* Ensure SVG takes full space within its parent */
+        #research-svg {
+            display: block; /* Remove extra space below SVG */
+        }
+
+    </style>
+</head>
+<body>
+    <div id="research-visualization">
+      <div class="header">实验室研究成果与核心技术能力</div>
+      <svg width="100%" height="calc(100% - 60px)" id="research-svg" style="margin-top: 50px;"></svg> <div class="legend">
+        <div style="font-weight:bold; margin-bottom:8px; font-size: 14px;">研究方向</div>
+        <div class="legend-item"><div class="legend-color" style="background:#3498db;"></div>四足机器人技术</div>
+        <div class="legend-item"><div class="legend-color" style="background:#e74c3c;"></div>导航与轨迹规划</div>
+        <div class="legend-item"><div class="legend-color" style="background:#2ecc71;"></div>多机器人协同</div>
+        <div class="legend-item"><div class="legend-color" style="background:#f39c12;"></div>定位与传感融合</div>
+        <div class="legend-item"><div class="legend-color" style="background:#9b59b6;"></div>鲁棒控制与决策</div>
+        <div class="legend-item"><div class="legend-color" style="background:#1abc9c;"></div>计算机视觉</div>
+        <div style="margin-top:12px; font-weight:bold; font-size: 14px;">论文统计</div>
+        <div style="margin-top:5px;">ICRA: 4篇</div>
+        <div>IROS: 3篇</div>
+        <div>其他: 3篇</div>
+      </div>
+
+      <div id="paper-info" class="paper-card"></div>
+
+      <script>
+        // Define research areas and paper data
+        const researchAreas = [
+          { id: 'core', name: '四足机器人技术', x: 50, y: 45, radius: 55, color: '#3498db', papers: [
+            // Papers directly related to "Quadruped Technology" can be listed here if any are general enough
+            // For now, it acts as a central node.
+          ]},
+          { id: 'navigation', name: '导航与轨迹规划', x: 28, y: 25, radius: 45, color: '#e74c3c',
+            papers: [
+              { title: "Agile and Safe Trajectory Planning for Quadruped Navigation with Motion Anisotropy Awareness", venue: "IROS 2024", authors: "W. Zhang, S. Xu, P. Cai, L. Zhu" },
+              { title: "Distributionally Robust Chance Constrained Trajectory Optimization for Mobile Robots within Uncertain Safe Corridor", venue: "ICRA 2024", authors: "S. Xu, H. Ruan, W. Zhang, Y. Wang, L. Zhu, C. P. Ho" },
+              { title: "Optimal Prescribed-Time Control based Reactive Planning System for Quadruped Robot Navigation", venue: "ICRA 2024", authors: "S. Xu, W. Zhang, C. P. Ho, L. Zhu" }
+            ]
+          },
+          { id: 'multirobots', name: '多机器人协同', x: 72, y: 25, radius: 45, color: '#2ecc71',
+            papers: [
+              { title: "Distributed Model Predictive Formation Control with Gait Synchronization for Multiple Quadruped Robots", venue: "ICRA 2023", authors: "S. Xu, W. Zhang, L. Zhu, C. P. Ho" },
+              { title: "Observer-based Distributed MPC for Collaborative Quadrotor-Quadruped Manipulation of a Cable-Towed Load", venue: "ICRA 2024", authors: "S. Xu, Y. Wang, W. Zhang, C. P. Ho, L. Zhu" }
+            ]
+          },
+          { id: 'sensing', name: '定位与传感融合', x: 28, y: 68, radius: 45, color: '#f39c12', // Adjusted y
+            papers: [
+              { title: "KLILO: Kalman Filter based LiDAR-Inertial-Leg Odometry for Legged Robots", venue: "IROS 2024", authors: "S. Xu, W. Zhang, L. Zhu" }
+            ]
+          },
+          { id: 'control', name: '鲁棒控制与决策', x: 72, y: 68, radius: 45, color: '#9b59b6', // Adjusted y
+            papers: [
+              { title: "Robust Convex Model Predictive Control for Quadruped Locomotion Under Uncertainties", venue: "IEEE Transactions on Robotics, 2023", authors: "S. Xu, L. Zhu, H. -T. Zhang, C. P. Ho" },
+              { title: "Fast bellman updates for wasserstein distributionally robust mdps", venue: "NeurIPS 2023", authors: "Yu Z, Dai L, Xu S, et al." }
+            ]
+          },
+          { id: 'vision', name: '计算机视觉', x: 50, y: 85, radius: 40, color: '#1abc9c', // Adjusted y
+            papers: [
+              { title: "F-GAN: Real-Time Color Correction Model of Underwater Images", venue: "TENCON 2022", authors: "F. H. Yang, R. R. Z. Guo, R. C. C. Cheung, C. P. Lau" },
+              { title: "An FPGA-based Accelerator for Local Bundle Adjustment of Stereo Visual Odometry", venue: "TENCON 2022", authors: "R. Guo, M. L. Ng, H. T. Tang, R. C. C. Cheung" }
+            ]
+          }
+        ];
+
+        const svgElement = document.getElementById('research-svg');
+        const paperInfoElement = document.getElementById('paper-info');
+        const researchVisualizationDiv = document.getElementById('research-visualization');
+
+        function renderVisualization() {
+            // Clear previous SVG content
+            svgElement.innerHTML = '';
+
+            const svgWidth = svgElement.clientWidth;
+            const svgHeight = svgElement.clientHeight;
+
+            // Helper to convert percentage to pixels
+            function getX(percentage) { return percentage * svgWidth / 100; }
+            function getY(percentage) { return percentage * svgHeight / 100; }
+
+            // Draw connection lines from each area to the central 'core' area
+            researchAreas.forEach((area, index) => {
+                if (area.id !== 'core') { // Connect all outer nodes to the central one
+                    const x1 = getX(area.x);
+                    const y1 = getY(area.y);
+                    const coreArea = researchAreas.find(a => a.id === 'core');
+                    const x2 = getX(coreArea.x);
+                    const y2 = getY(coreArea.y);
+
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", x1);
+                    line.setAttribute("y1", y1);
+                    line.setAttribute("x2", x2);
+                    line.setAttribute("y2", y2);
+                    line.setAttribute("stroke", "#bdc3c7"); // Lighter gray for connections
+                    line.setAttribute("stroke-width", "2.5");
+                    line.setAttribute("opacity", "0.7");
+                    line.classList.add("connection");
+                    svgElement.appendChild(line);
+                }
+            });
+
+            // Draw nodes (circles and text)
+            researchAreas.forEach(area => {
+                const cx = getX(area.x);
+                const cy = getY(area.y);
+
+                // Node circle
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", cx);
+                circle.setAttribute("cy", cy);
+                circle.setAttribute("r", area.radius);
+                circle.setAttribute("fill", area.color);
+                circle.setAttribute("opacity", "0.9");
+                circle.classList.add("node");
+                circle.dataset.papers = JSON.stringify(area.papers);
+                circle.dataset.name = area.name;
+                svgElement.appendChild(circle);
+
+                // Node label (research area name)
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", cx);
+                text.setAttribute("y", cy);
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("dy", "0.3em"); // Vertically center
+                text.setAttribute("fill", "white");
+                text.setAttribute("font-weight", "600");
+                text.setAttribute("font-size", area.id === 'core' ? "16px" : "13px");
+                text.classList.add("node-label");
+                text.textContent = area.name;
+                svgElement.appendChild(text);
+
+                // Paper count for non-core nodes
+                if (area.id !== 'core' && area.papers.length > 0) {
+                    const paperCount = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    paperCount.setAttribute("x", cx);
+                    paperCount.setAttribute("y", cy + area.radius - 12); // Position inside bottom of circle
+                    paperCount.setAttribute("text-anchor", "middle");
+                    paperCount.setAttribute("fill", "rgba(255,255,255,0.9)");
+                    paperCount.setAttribute("font-size", "11px");
+                    paperCount.classList.add("node-label");
+                    paperCount.textContent = `${area.papers.length}篇`;
+                    svgElement.appendChild(paperCount);
+                }
+            });
+
+            // Mouse hover event listeners for nodes
+            const nodes = svgElement.querySelectorAll('.node');
+            nodes.forEach(node => {
+                node.addEventListener('mouseover', function(e) {
+                    const papers = JSON.parse(this.dataset.papers);
+                    const name = this.dataset.name;
+
+                    if (papers.length > 0) {
+                        let htmlContent = `<div class="paper-title" style="color:${this.getAttribute('fill')};">${name} - 相关论文:</div>`;
+                        papers.forEach(paper => {
+                            htmlContent += `
+                                <div style="margin-top:10px; border-left: 3px solid ${this.getAttribute('fill')}; padding-left: 8px;">
+                                    <div class="paper-title" style="color:#333;">${paper.title}</div>
+                                    <div class="paper-venue">${paper.venue}</div>
+                                    <div class="paper-authors">${paper.authors}</div>
+                                </div>
+                            `;
+                        });
+
+                        paperInfoElement.innerHTML = htmlContent;
+                        paperInfoElement.style.opacity = "1";
+                        paperInfoElement.style.transform = "translateY(0) scale(1)";
+
+                        // Position the paper info card
+                        const containerRect = researchVisualizationDiv.getBoundingClientRect();
+                        const nodeCx = parseFloat(this.getAttribute('cx'));
+                        const nodeCy = parseFloat(this.getAttribute('cy'));
+                        const nodeR = parseFloat(this.getAttribute('r'));
+
+                        let left = nodeCx + nodeR + 15; // Default to right of node
+                        let top = nodeCy - paperInfoElement.offsetHeight / 2;
+
+                        // Adjust if going off-screen
+                        if (left + paperInfoElement.offsetWidth > svgWidth - 10) {
+                            left = nodeCx - nodeR - paperInfoElement.offsetWidth - 15; // Move to left
+                        }
+                        if (top < 10) {
+                            top = 10;
+                        }
+                        if (top + paperInfoElement.offsetHeight > svgHeight - 10) {
+                            top = svgHeight - paperInfoElement.offsetHeight - 10;
+                        }
+                         // Relative to the #research-visualization container
+                        paperInfoElement.style.left = `${left}px`;
+                        paperInfoElement.style.top = `${top + parseFloat(svgElement.style.marginTop || 0)}px`;
+
+
+                    } else if (name === "四足机器人技术") { // Special case for the central node if it has no direct papers
+                         paperInfoElement.innerHTML = `<div class="paper-title" style="color:${this.getAttribute('fill')};">${name}</div><div>核心技术领域，连接各项具体研究。</div>`;
+                         paperInfoElement.style.opacity = "1";
+                         paperInfoElement.style.transform = "translateY(0) scale(1)";
+                         const nodeCx = parseFloat(this.getAttribute('cx'));
+                         const nodeCy = parseFloat(this.getAttribute('cy'));
+                         paperInfoElement.style.left = `${nodeCx - paperInfoElement.offsetWidth / 2}px`;
+                         paperInfoElement.style.top = `${nodeCy + parseFloat(this.getAttribute('r')) + 10 + parseFloat(svgElement.style.marginTop || 0)}px`;
+                    }
+                });
+
+                node.addEventListener('mouseout', function() {
+                    paperInfoElement.style.opacity = "0";
+                    paperInfoElement.style.transform = "translateY(10px) scale(0.95)";
+                });
+            });
+        }
+
+        // Initial render
+        renderVisualization();
+
+        // Re-render on window resize to keep it responsive
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(renderVisualization, 100); // Debounce resize
+        });
+
+      </script>
+    </div>
+</body>
+</html>
